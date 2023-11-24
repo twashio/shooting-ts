@@ -1,0 +1,544 @@
+interface Scene {
+    Render(): void;
+}
+
+interface Object {
+    x: number;
+    y: number;
+    Move(scene: GameScene): void;
+    Render(scene: GameScene): void;
+}
+
+class GameScene implements Scene {
+    private frameCount: number;
+    private score: number;
+
+    private canvas: HTMLCanvasElement;
+    private ctx: CanvasRenderingContext2D;
+
+    private width: number;
+    private heigtht: number;
+
+    private img_me: CanvasImageSource;
+    private me: Me;
+
+    private img_enemy: CanvasImageSource;
+    private enemies: Array<Enemy>;
+
+    private shots: Array<Shot>;
+
+    public get Context(): CanvasRenderingContext2D {
+        return this.ctx;
+    }
+
+    public get Width(): number {
+        return this.canvas.width;
+    }
+
+    public get Height(): number {
+        return this.canvas.height;
+    }
+
+    public get Me(): Me {
+        return this.me;
+    }
+
+    public get Img_Me(): CanvasImageSource {
+        return this.img_me;
+    }
+
+    public get Enemy(): Array<Enemy> {
+        return this.Enemy;
+    }
+
+    public get Img_Enemy(): CanvasImageSource {
+        return this.img_enemy;
+    }
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.frameCount = 0;
+        this.score = 0;
+
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
+
+        this.canvas.width = 1000;
+        this.canvas.height = 600;
+
+        this.width = this.canvas.width;
+        this.heigtht = this.canvas.height;
+
+        this.img_me = new Image();
+        this.img_me.src = "img/war_sentouki_noman.png";
+        this.me = new Me(this);
+
+        this.img_enemy = new Image();
+        this.img_enemy.src = "img/war_zerosen.png";
+        this.enemies = new Array();
+
+        for (let i = 0; i < 5; i++) {
+            this.enemies.push(new Enemy(this));
+        }
+
+        this.shots = new Array();
+
+        window.addEventListener("keydown", this.keyDown.bind(this));
+        window.addEventListener("keyup", this.keyUp.bind(this));
+    }
+
+    private keyDown(e: KeyboardEvent): void {
+        const key = e.key;
+
+        switch (key) {
+            case "ArrowUp":
+                this.me.upFlag = true;
+                this.me.downFlag = false;
+                break;
+            case "ArrowDown":
+                this.me.upFlag = false;
+                this.me.downFlag = true;
+                break;
+            case "z":
+            case "Z":
+                // Prohibit rapid fire
+                if (e.repeat) {
+                    break;
+                }
+                const shot = new Shot(this);
+                shot.x = this.me.x + this.me.Width * 0.45;
+                shot.y = this.me.y;
+
+                let pushed = false;
+                for (let i = 0; i < this.shots.length; i++) {
+                    if (!this.shots[i].live) {
+                        this.shots[i] = shot;
+                        pushed = true;
+                        break;
+                    }
+                }
+
+                if (!pushed) {
+                    this.shots.push(shot);
+                }
+                break;
+            case "Shift":
+                this.me.slowFlag = true;
+            default:
+                break;
+        }
+    }
+
+    private keyUp(e: KeyboardEvent): void {
+        const key = e.key;
+
+        switch (key) {
+            case "ArrowUp":
+                this.me.upFlag = false;
+                this.me.downFlag = false;
+                break;
+            case "ArrowDown":
+                this.me.upFlag = false;
+                this.me.downFlag = false;
+                break;
+            case "Shift":
+                this.me.slowFlag = false;
+            default:
+                break;
+        }
+    }
+
+    public Render(): void {
+        this.frameCount++;
+
+        if (this.me.alive) {
+            // Move enemies
+            for (let i = 0; i < this.enemies.length; i++) {
+                this.enemies[i].Move(this);
+            }
+
+            // Move player's fighter
+            this.me.Move(this);
+
+            // Move player's shots
+            for (let i = 0; i < this.shots.length; i++) {
+                this.shots[i].Move(this);
+            }
+
+            // Enemy's collision detection
+            for (let i = 0; i < this.shots.length; i++) {
+                for (let j = 0; j < this.enemies.length; j++) {
+                    let isHit = this.enemies[j].IsHit(this.shots[i]);
+                    if (isHit) {
+                        this.enemies[j].alive = false;
+                    }
+                }
+            }
+
+            for (let i = 0; i < this.enemies.length; i++) {
+                for (let k = 0; k < this.shots.length; k++) {
+                    if (this.shots[k].live) {
+                        if (this.enemies[i].IsHit(this.shots[k])) {
+                            this.shots[k].live = false;
+                            this.enemies[i].SetStartPosition(this);
+
+                            this.score += 100;
+                        }
+                    }
+                }
+            }
+
+            // Player's collision detection
+            for (let i = 0; i < this.enemies.length; i++) {
+                const isHit = this.me.IsHit(this.enemies[i]);
+                if (isHit) {
+                    this.me.alive = false;
+                    break;
+                }
+            }
+
+            // Generate a enemy every 300 frames
+            if (this.frameCount % 300 == 0) {
+                this.enemies.push(new Enemy(this));
+            }
+        }
+
+        // Render background
+        this.ctx.fillStyle = "rgb(107, 195, 255)";
+        const grd = this.ctx.createLinearGradient(0, 0, 0, this.heigtht);
+        grd.addColorStop(0, "#0000A0"); // Earth Blue
+        grd.addColorStop(1, "#C2DFFF"); // Sea Blue
+        this.ctx.fillStyle = grd;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Render enemies
+        for (let i = 0; i < this.enemies.length; i++) {
+            this.enemies[i].Render(this);
+        }
+
+        // Render player
+        this.me.Render(this);
+
+        // Render player's shots
+        for (let i = 0; i < this.shots.length; i++) {
+            this.shots[i].Render(this);
+        }
+
+        // Render letters
+        if (this.me.alive) {
+            this.ctx.font = "bold 15px Verdana";
+            const txtDesc = "↑:Up  ↓:Down  Z:Shoot  Shift:Reduce speed";
+
+            this.ctx.strokeStyle = "rgb(0, 0, 0)";
+            this.ctx.strokeText(txtDesc, 5, 25);
+
+            this.ctx.fillStyle = "rgb(255, 255, 255)";
+            this.ctx.fillText(txtDesc, 5, 25);
+
+            const tmScore = this.ctx.measureText(txtDesc);
+            const txtScore = "Score : " + this.score;
+            this.ctx.strokeStyle = "rgb(0, 0, 0)";
+            this.ctx.strokeText(txtScore, tmScore.width + 30, 25);
+            this.ctx.fillText(txtScore, tmScore.width + 30, 25);
+        } else {
+            // End screen
+            this.ctx.font = "bold 80px Verdana";
+            const txtGame = "Game Over";
+            const tmGame = this.ctx.measureText(txtGame);
+
+            this.ctx.strokeStyle = "rgb(0, 0, 0)";
+            this.ctx.strokeText(
+                txtGame,
+                this.width / 2 - tmGame.width / 2,
+                this.heigtht / 2
+            );
+
+            this.ctx.fillStyle = "rgb(255, 255, 255)";
+            this.ctx.fillText(
+                txtGame,
+                this.width / 2 - tmGame.width / 2,
+                this.heigtht / 2
+            );
+
+            // Render score
+            this.ctx.font = "bold 40px Verdana";
+            const txtScore = "Score: " + this.score;
+            this.ctx.fillStyle = "rgb(255, 255, 255)";
+            const tmScore = this.ctx.measureText(txtScore);
+            this.ctx.fillText(
+                txtScore,
+                this.width / 2 - tmScore.width / 2,
+                this.heigtht / 2 + 50
+            );
+            this.ctx.strokeStyle = "rgb(0, 0, 0)";
+            this.ctx.strokeText(
+                txtScore,
+                this.width / 2 - tmScore.width / 2,
+                this.heigtht / 2 + 50
+            );
+        }
+
+        window.requestAnimationFrame(this.Render.bind(this));
+    }
+}
+
+class Rect {
+    private x: number;
+    private y: number;
+    private w: number;
+    private h: number;
+
+    constructor(x: number, y: number, w: number, h: number) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+    }
+
+    public IsContain(px: number, py: number): boolean {
+        if (
+            this.x <= px &&
+            px <= this.x + this.w &&
+            this.y <= py &&
+            py <= this.y + this.h
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    public IsIntersect(r: Rect): boolean {
+        let mx1 = this.x;
+        let my1 = this.y;
+        let mx2 = this.x + this.w;
+        let my2 = this.y + this.h;
+
+        let ex1 = r.x;
+        let ey1 = r.y;
+        let ex2 = r.x + r.w;
+        let ey2 = r.y + r.h;
+
+        return mx1 <= ex2 && ex1 <= mx2 && my1 <= ey2 && ey1 <= my2;
+    }
+}
+
+class Enemy implements Object {
+    public alive: boolean;
+    private speed: number;
+    private hSpeed: number;
+
+    private aspect: number;
+    private w: number;
+    private h: number;
+
+    public x: number;
+    public y: number;
+
+    constructor(scene: GameScene) {
+        this.alive = true;
+        this.speed = 0;
+        this.hSpeed = 0;
+
+        this.aspect = 1.456;
+        this.w = 100;
+        this.h = this.w / this.aspect;
+
+        this.x = scene.Width - this.w / 2;
+        this.y = scene.Height / 2;
+
+        this.SetStartPosition(scene);
+    }
+
+    public SetStartPosition(scene: GameScene): void {
+        this.x = this.w / 2 + scene.Width + (Math.random() * scene.Width) / 2;
+        this.y = this.h / 2 + Math.random() * (scene.Height - this.h);
+        this.speed = Math.random() * 3 + 4;
+
+        if (0.5 > Math.random()) {
+            let dx = this.x - scene.Me.x + 300;
+            let dy = this.y - scene.Me.y;
+
+            this.hSpeed = this.speed * (dy / dx);
+        } else {
+            this.hSpeed = 0;
+        }
+    }
+
+    public Move(scene: GameScene): void {
+        this.x -= this.speed;
+        this.y -= this.hSpeed;
+
+        if (this.x + this.w / 2 < 0) {
+            this.SetStartPosition(scene);
+        }
+    }
+
+    public Render(scene: GameScene): void {
+        scene.Context.drawImage(
+            scene.Img_Enemy,
+            this.x - this.w / 2,
+            this.y - this.h / 2,
+            this.w,
+            this.h
+        );
+    }
+
+    public GetHitRect(): Rect {
+        return new Rect(
+            this.x - this.w * 0.3,
+            this.y - this.h * 0.3,
+            this.w * 0.6,
+            this.h * 0.6
+        );
+    }
+
+    public IsHit(shot: Shot): boolean {
+        if (!shot.live) {
+            return false;
+        }
+
+        const hitRect = this.GetHitRect();
+
+        if (hitRect.IsContain(shot.x, shot.y)) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
+class Me implements Object {
+    public alive: boolean;
+
+    private aspect: number;
+    private w: number;
+    private h: number;
+
+    public x: number;
+    public y: number;
+
+    public upFlag: boolean;
+    public downFlag: boolean;
+
+    private speed: number;
+    private slowSpeed: number;
+    public slowFlag: boolean;
+
+    public get Width(): number {
+        return this.w;
+    }
+
+    public get Height(): number {
+        return this.h;
+    }
+
+    constructor(scene: GameScene) {
+        this.alive = true;
+
+        this.aspect = 1.331;
+        this.w = 100;
+        this.h = this.w / this.aspect;
+
+        this.x = this.w / 2;
+        this.y = scene.Height / 2;
+
+        this.upFlag = false;
+        this.downFlag = false;
+
+        this.speed = 5;
+        this.slowSpeed = 3;
+        this.slowFlag = false;
+    }
+
+    public Move(scene: GameScene) {
+        if (this.upFlag && this.y - this.h / 2 >= 0) {
+            if (this.slowFlag) this.y -= this.slowSpeed;
+            else this.y -= this.speed;
+        } else if (this.downFlag && this.y + this.h / 2 <= scene.Height) {
+            if (this.slowFlag) this.y += this.slowSpeed;
+            else this.y += this.speed;
+        }
+    }
+
+    public Render(scene: GameScene): void {
+        scene.Context.drawImage(
+            scene.Img_Me,
+            this.x - this.w / 2,
+            this.y - this.h / 2,
+            this.w,
+            this.h
+        );
+    }
+
+    public GetHitRect(): Rect {
+        return new Rect(
+            this.x - this.w * 0.3,
+            this.y - this.h * 0.3,
+            this.w * 0.6,
+            this.h * 0.6
+        );
+    }
+
+    public IsHit(enemy: Enemy): boolean {
+        const hitRect = enemy.GetHitRect();
+
+        if (hitRect.IsIntersect(this.GetHitRect())) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
+class Shot implements Object {
+    public live: boolean;
+
+    private w: number;
+    private h: number;
+
+    public x: number;
+    public y: number;
+
+    constructor(scene: GameScene) {
+        this.live = true;
+        this.w = 10;
+        this.h = 10;
+
+        this.x = 100;
+        this.y = scene.Height / 2;
+    }
+
+    public Move(scene: GameScene): void {
+        this.x += 10;
+
+        if (this.x > scene.Width + this.w) {
+            this.live = false;
+        }
+    }
+    public Render(scene: GameScene): void {
+        if (!this.live) return;
+
+        const ctx = scene.Context;
+
+        ctx.beginPath();
+        const grd = ctx.createRadialGradient(
+            this.x,
+            this.y,
+            0,
+            this.x,
+            this.y,
+            this.w / 2
+        );
+        grd.addColorStop(0, "white");
+        grd.addColorStop(1, "orange");
+        ctx.fillStyle = grd;
+        ctx.arc(this.x, this.y, this.w / 2, 0, Math.PI * 2, true);
+
+        ctx.fill();
+    }
+}
+
+window.onload = () => {
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    const scene = new GameScene(canvas);
+    scene.Render();
+};
