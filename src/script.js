@@ -1,4 +1,3 @@
-import { setCookie, getCookie } from "./cookie.js";
 var GameScene = /** @class */ (function () {
     function GameScene(canvas) {
         this.frameCount = 0;
@@ -84,7 +83,7 @@ var GameScene = /** @class */ (function () {
                 break;
             case "z":
             case "Z":
-                // 連射できないようにする
+                // Prohibit rapid fire
                 if (e.repeat) {
                     break;
                 }
@@ -129,17 +128,17 @@ var GameScene = /** @class */ (function () {
     GameScene.prototype.Render = function () {
         this.frameCount++;
         if (this.me.alive) {
-            // 敵機の移動
+            // Move enemies
             for (var i = 0; i < this.enemies.length; i++) {
                 this.enemies[i].Move(this);
             }
-            // 自機の移動
+            // Move player's fighter
             this.me.Move(this);
-            // 自機の弾の移動
+            // Move player's shots
             for (var i = 0; i < this.shots.length; i++) {
                 this.shots[i].Move(this);
             }
-            // 敵機の当たり判定
+            // Enemy's collision detection
             for (var i = 0; i < this.shots.length; i++) {
                 for (var j = 0; j < this.enemies.length; j++) {
                     var isHit = this.enemies[j].IsHit(this.shots[i]);
@@ -159,7 +158,7 @@ var GameScene = /** @class */ (function () {
                     }
                 }
             }
-            // 自機の当たり判定
+            // Player's collision detection
             for (var i = 0; i < this.enemies.length; i++) {
                 var isHit = this.me.IsHit(this.enemies[i]);
                 if (isHit) {
@@ -167,29 +166,29 @@ var GameScene = /** @class */ (function () {
                     break;
                 }
             }
-            // 一定時間間隔で敵機を生成
+            // Generate a enemy every 300 frames
             if (this.frameCount % 300 == 0) {
                 this.enemies.push(new Enemy(this));
             }
         }
-        // 背景の描画
+        // Render background
         this.ctx.fillStyle = "rgb(107, 195, 255)";
         var grd = this.ctx.createLinearGradient(0, 0, 0, this.heigtht);
         grd.addColorStop(0, "#0000A0"); // Earth Blue
         grd.addColorStop(1, "#C2DFFF"); // Sea Blue
         this.ctx.fillStyle = grd;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        // 敵機の描画
+        // Render enemies
         for (var i = 0; i < this.enemies.length; i++) {
             this.enemies[i].Render(this);
         }
-        // 自機の描画
+        // Render player
         this.me.Render(this);
-        // 自機の弾の描画
+        // Render player's shots
         for (var i = 0; i < this.shots.length; i++) {
             this.shots[i].Render(this);
         }
-        // 文字の描画
+        // Render letters
         if (this.me.alive) {
             this.ctx.font = "bold 15px Verdana";
             var txtDesc = "↑:Up  ↓:Down  Z:Shoot  Shift:Reduce speed";
@@ -204,7 +203,7 @@ var GameScene = /** @class */ (function () {
             this.ctx.fillText(txtScore, tmScore.width + 30, 25);
         }
         else {
-            // 終了画面
+            // End screen
             this.ctx.font = "bold 80px Verdana";
             var txtGame = "Game Over";
             var tmGame = this.ctx.measureText(txtGame);
@@ -212,20 +211,9 @@ var GameScene = /** @class */ (function () {
             this.ctx.strokeText(txtGame, this.width / 2 - tmGame.width / 2, this.heigtht / 2);
             this.ctx.fillStyle = "rgb(255, 255, 255)";
             this.ctx.fillText(txtGame, this.width / 2 - tmGame.width / 2, this.heigtht / 2);
-            // ベストスコアの更新
-            var bestScore = 0;
-            var pastBestScore = Number(getCookie("score"));
-            if (pastBestScore == null) {
-                bestScore = this.score;
-            }
-            else {
-                bestScore =
-                    pastBestScore > this.score ? pastBestScore : this.score;
-            }
-            setCookie("score", String(bestScore), 30);
-            // スコアの表示
+            // Render score
             this.ctx.font = "bold 40px Verdana";
-            var txtScore = "Score: " + this.score + "  " + "Your Best: " + bestScore;
+            var txtScore = "Score: " + this.score;
             this.ctx.fillStyle = "rgb(255, 255, 255)";
             var tmScore = this.ctx.measureText(txtScore);
             this.ctx.fillText(txtScore, this.width / 2 - tmScore.width / 2, this.heigtht / 2 + 50);
