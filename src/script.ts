@@ -99,14 +99,33 @@ class GameScene implements Scene {
         const key = e.key;
 
         switch (key) {
+            // Direction of moving
             case "ArrowUp":
                 this.me.upFlag = true;
                 this.me.downFlag = false;
+                this.me.forwardFlag = false;
+                this.me.backFlag = false;
+                break;
                 break;
             case "ArrowDown":
                 this.me.upFlag = false;
                 this.me.downFlag = true;
+                this.me.forwardFlag = false;
+                this.me.backFlag = false;
                 break;
+            case "ArrowRight":
+                this.me.upFlag = false;
+                this.me.downFlag = false;
+                this.me.forwardFlag = true;
+                this.me.backFlag = false;
+                break;
+            case "ArrowLeft":
+                this.me.upFlag = false;
+                this.me.downFlag = false;
+                this.me.forwardFlag = false;
+                this.me.backFlag = true;
+                break;
+            // Fire
             case "z":
             case "Z":
                 // Prohibit rapid fire
@@ -130,6 +149,7 @@ class GameScene implements Scene {
                     this.shots.push(shot);
                 }
                 break;
+            // Slow down
             case "Shift":
                 this.me.slowFlag = true;
             default:
@@ -142,13 +162,18 @@ class GameScene implements Scene {
         const key = e.key;
 
         switch (key) {
+            // Stop moving
             case "ArrowUp":
                 this.me.upFlag = false;
-                this.me.downFlag = false;
                 break;
             case "ArrowDown":
-                this.me.upFlag = false;
                 this.me.downFlag = false;
+                break;
+            case "ArrowRight":
+                this.me.forwardFlag = false;
+                break;
+            case "ArrowLeft":
+                this.me.backFlag = false;
                 break;
             case "Shift":
                 this.me.slowFlag = false;
@@ -239,7 +264,7 @@ class GameScene implements Scene {
         // Render letters
         if (this.me.alive) {
             this.ctx.font = "bold 15px Verdana";
-            const txtDesc = "↑:Up  ↓:Down  Z:Shoot  Shift:Reduce speed";
+            const txtDesc = "↑:Up  ↓:Down  →:Forward ←:Back Z:Shoot  Shift:Reduce speed";
 
             this.ctx.strokeStyle = "rgb(0, 0, 0)";
             this.ctx.strokeText(txtDesc, 5, 25);
@@ -540,6 +565,8 @@ class Me implements Object {
 
     public upFlag: boolean;
     public downFlag: boolean;
+    public forwardFlag: boolean;
+    public backFlag: boolean;
 
     private speed: number;
     private slowSpeed: number;
@@ -577,11 +604,29 @@ class Me implements Object {
     // Move player's aircraft
     public Move(scene: GameScene) {
         if (this.upFlag && this.y - this.h / 2 >= 0) {
-            if (this.slowFlag) this.y -= this.slowSpeed;
-            else this.y -= this.speed;
+            if (this.slowFlag) {
+                this.y -= this.slowSpeed;
+            } else {
+                this.y -= this.speed;
+            }
         } else if (this.downFlag && this.y + this.h / 2 <= scene.Height) {
-            if (this.slowFlag) this.y += this.slowSpeed;
-            else this.y += this.speed;
+            if (this.slowFlag) {
+                this.y += this.slowSpeed;
+            } else {
+                this.y += this.speed;
+            }
+        } else if (this.forwardFlag && this.x + this.w / 2 <= scene.Width) {
+            if (this.slowFlag) {
+                this.x += this.slowSpeed;
+            } else {
+                this.x += this.speed;
+            }
+        } else if (this.backFlag && this.x - this.w / 2 >= 0) {
+            if (this.slowFlag) {
+                this.x -= this.slowSpeed;
+            } else {
+                this.x -= this.speed;
+            }
         }
     }
 
