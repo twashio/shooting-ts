@@ -195,6 +195,8 @@ class GameScene implements Scene {
 
     // Render game scene
     public Render(): void {
+        // ----------- Update the screen ----------
+
         // Increment frame counter
         this.frameCount++;
 
@@ -273,6 +275,19 @@ class GameScene implements Scene {
             }
         }
 
+        // Particles are moved regardless of whether the player is dead or alive
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+
+            p.Move();
+
+            if (p.age >= p.maxAge) {
+                this.particles.splice(i, 1);
+            }
+        }
+
+        // ----------- Render the screen ----------
+
         // Render background
         this.ctx.fillStyle = "rgb(107, 195, 255)";
         const grd = this.ctx.createLinearGradient(0, 0, 0, this.heigtht);
@@ -293,11 +308,7 @@ class GameScene implements Scene {
 
         // Render particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            p.Render(this);
-            if (p.age >= p.maxAge) {
-                this.particles.splice(i, 1);
-            }
+            this.particles[i].Render(this);
         }
 
         // Render player's shots
@@ -790,18 +801,19 @@ class Particle implements Object {
 
     // Methods
     public Render(scene: GameScene) {
-        this.vx *= 0.99;
-        this.vy *= 0.99;
-        this.x += this.vx;
-        this.y += this.vy;
-        this.age++;
-
-        // Draw
         scene.Context.beginPath();
         scene.Context.arc(this.x, this.y, 3, 0, 2 * Math.PI);
         scene.Context.fillStyle =
             "rgba(255, 150, 0, " + (1 - this.age / this.maxAge) + ")";
         scene.Context.fill();
+    }
+
+    public Move() {
+        this.vx *= 0.99;
+        this.vy *= 0.99;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
     }
 }
 

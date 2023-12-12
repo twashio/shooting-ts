@@ -160,6 +160,7 @@ var GameScene = /** @class */ (function () {
     };
     // Render game scene
     GameScene.prototype.Render = function () {
+        // ----------- Update the screen ----------
         // Increment frame counter
         this.frameCount++;
         // Move objects only if the player is alive
@@ -219,6 +220,15 @@ var GameScene = /** @class */ (function () {
                 this.enemies.push(new Enemy(this));
             }
         }
+        // Particles are moved regardless of whether the player is dead or alive
+        for (var i = this.particles.length - 1; i >= 0; i--) {
+            var p = this.particles[i];
+            p.Move();
+            if (p.age >= p.maxAge) {
+                this.particles.splice(i, 1);
+            }
+        }
+        // ----------- Render the screen ----------
         // Render background
         this.ctx.fillStyle = "rgb(107, 195, 255)";
         var grd = this.ctx.createLinearGradient(0, 0, 0, this.heigtht);
@@ -236,11 +246,7 @@ var GameScene = /** @class */ (function () {
         }
         // Render particles
         for (var i = this.particles.length - 1; i >= 0; i--) {
-            var p = this.particles[i];
-            p.Render(this);
-            if (p.age >= p.maxAge) {
-                this.particles.splice(i, 1);
-            }
+            this.particles[i].Render(this);
         }
         // Render player's shots
         for (var i = 0; i < this.shots.length; i++) {
@@ -590,17 +596,18 @@ var Particle = /** @class */ (function () {
     }
     // Methods
     Particle.prototype.Render = function (scene) {
-        this.vx *= 0.99;
-        this.vy *= 0.99;
-        this.x += this.vx;
-        this.y += this.vy;
-        this.age++;
-        // Draw
         scene.Context.beginPath();
         scene.Context.arc(this.x, this.y, 3, 0, 2 * Math.PI);
         scene.Context.fillStyle =
             "rgba(255, 150, 0, " + (1 - this.age / this.maxAge) + ")";
         scene.Context.fill();
+    };
+    Particle.prototype.Move = function () {
+        this.vx *= 0.99;
+        this.vy *= 0.99;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
     };
     return Particle;
 }());
