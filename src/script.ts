@@ -1,7 +1,9 @@
+// Interface of scenes
 interface Scene {
     Render(): void;
 }
 
+// Interface of objects such as aircrafts, bullets, etc
 interface Object {
     x: number;
     y: number;
@@ -9,7 +11,10 @@ interface Object {
     Render(scene: GameScene): void;
 }
 
+// Class of game scene
+// This class controls all instances of objects
 class GameScene implements Scene {
+    // Fields
     private frameCount: number;
     private score: number;
 
@@ -27,6 +32,7 @@ class GameScene implements Scene {
 
     private shots: Array<Shot>;
 
+    // Properties
     public get Context(): CanvasRenderingContext2D {
         return this.ctx;
     }
@@ -55,6 +61,7 @@ class GameScene implements Scene {
         return this.img_enemy;
     }
 
+    // Constrctor
     constructor(canvas: HTMLCanvasElement) {
         this.frameCount = 0;
         this.score = 0;
@@ -86,6 +93,8 @@ class GameScene implements Scene {
         window.addEventListener("keyup", this.keyUp.bind(this));
     }
 
+    // Methods
+    // Callback function binded to keydown
     private keyDown(e: KeyboardEvent): void {
         const key = e.key;
 
@@ -128,6 +137,7 @@ class GameScene implements Scene {
         }
     }
 
+    // Callback function binded to keyup
     private keyUp(e: KeyboardEvent): void {
         const key = e.key;
 
@@ -147,7 +157,9 @@ class GameScene implements Scene {
         }
     }
 
+    // Render game scene
     public Render(): void {
+        // Increment frame counter
         this.frameCount++;
 
         if (this.me.alive) {
@@ -156,7 +168,7 @@ class GameScene implements Scene {
                 this.enemies[i].Move(this);
             }
 
-            // Move player's fighter
+            // Move player's aircraft
             this.me.Move(this);
 
             // Move player's shots
@@ -164,7 +176,7 @@ class GameScene implements Scene {
                 this.shots[i].Move(this);
             }
 
-            // Enemy's collision detection
+            // Enemy collision detection
             for (let i = 0; i < this.shots.length; i++) {
                 for (let j = 0; j < this.enemies.length; j++) {
                     let isHit = this.enemies[j].IsHit(this.shots[i]);
@@ -174,6 +186,7 @@ class GameScene implements Scene {
                 }
             }
 
+            // If the bullet is off the screen, set a new bullet
             for (let i = 0; i < this.enemies.length; i++) {
                 for (let k = 0; k < this.shots.length; k++) {
                     if (this.shots[k].live) {
@@ -187,7 +200,7 @@ class GameScene implements Scene {
                 }
             }
 
-            // Player's collision detection
+            // Player collision detection
             for (let i = 0; i < this.enemies.length; i++) {
                 const isHit = this.me.IsHit(this.enemies[i]);
                 if (isHit) {
@@ -277,19 +290,24 @@ class GameScene implements Scene {
             );
         }
 
+        // Request frame
         window.requestAnimationFrame(this.Render.bind(this));
     }
 }
 
+// Class of 2D Vector
 class Vector2 {
+    // Fields
     public x: number;
     public y: number;
 
+    // Constructor
     constructor(x: number, y: number) {
         this.x = x;
         this.y = y;
     }
 
+    // Methods
     // Inner product
     public static Dot(a: Vector2, b: Vector2): number {
         return a.x * b.x + a.y * b.y;
@@ -306,13 +324,18 @@ class Vector2 {
     }
 }
 
+// Class of Polygon
+// It is used to collision detection
 class Polygon {
+    // Fields
     public vertices: Array<Vector2>;
 
+    // Constructor
     constructor(vertices: Array<Vector2>) {
         this.vertices = vertices;
     }
 
+    // Methods
     // Create a list of normal vectors for each edge
     private static getAxes(a: Polygon, b: Polygon): Array<Vector2> {
         let axes = new Array<Vector2>();
@@ -349,6 +372,7 @@ class Polygon {
         return [min, max];
     }
 
+    // Returns whether two polygons collide
     public static Collide(a: Polygon, b: Polygon): boolean {
         // List of axes
         let axes = this.getAxes(a, b);
@@ -373,7 +397,9 @@ class Polygon {
     }
 }
 
+// Class of enemy aircraft
 class Enemy implements Object {
+    // Fields
     public alive: boolean;
     private speed: number;
     private hSpeed: number;
@@ -387,6 +413,7 @@ class Enemy implements Object {
 
     public angle: number;
 
+    // Constructor
     constructor(scene: GameScene) {
         this.alive = true;
         this.speed = 0;
@@ -404,6 +431,8 @@ class Enemy implements Object {
         this.SetStartPosition(scene);
     }
 
+    // Methods
+    // Set start position of enemy aricraft
     public SetStartPosition(scene: GameScene): void {
         this.x = this.w / 2 + scene.Width + (Math.random() * scene.Width) / 2;
         this.y = this.h / 2 + Math.random() * (scene.Height - this.h);
@@ -421,6 +450,7 @@ class Enemy implements Object {
         }
     }
 
+    // Move enemy aircraft
     public Move(scene: GameScene): void {
         this.x -= this.speed;
         this.y -= this.hSpeed;
@@ -430,6 +460,7 @@ class Enemy implements Object {
         }
     }
 
+    // Render enemy aircraft
     public Render(scene: GameScene): void {
         // Rotate and draw
         scene.Context.save();
@@ -447,6 +478,7 @@ class Enemy implements Object {
         scene.Context.restore();
     }
 
+    // Get apolygon of enemy aircraft
     public GetPolygon(): Polygon {
         // Make the hitbox size smaller than the image size
         const vertices = [
@@ -459,14 +491,14 @@ class Enemy implements Object {
         let vertices_roteted = [];
 
         vertices.forEach((vector) => {
-            // Convert coordinates to center on origin
+            // Convert coordinates to center on (0, 0)
             let x0 = vector.x - this.x;
             let y0 = vector.y - this.y;
 
             // Rotate
             let x1 = x0 * Math.cos(this.angle) - y0 * Math.sin(this.angle);
             let y1 = x0 * Math.sin(this.angle) + y0 * Math.cos(this.angle);
-        
+
             // Restore potision
             let x2 = x1 + this.x;
             let y2 = y1 + this.y;
@@ -477,12 +509,16 @@ class Enemy implements Object {
         return new Polygon(vertices_roteted);
     }
 
+    // Collision detection
     public IsHit(shot: Shot): boolean {
+        // If the shot is not alive, return false
         if (!shot.live) {
             return false;
         }
 
+        // Get a vector of bullet
         let vertices = [new Vector2(shot.x, shot.y)];
+        // Collision detection
         if (Polygon.Collide(this.GetPolygon(), new Polygon(vertices))) {
             return true;
         }
@@ -491,7 +527,9 @@ class Enemy implements Object {
     }
 }
 
+// Class of player's aircraft
 class Me implements Object {
+    // Fields
     public alive: boolean;
 
     private aspect: number;
@@ -508,6 +546,7 @@ class Me implements Object {
     private slowSpeed: number;
     public slowFlag: boolean;
 
+    // Properties
     public get Width(): number {
         return this.w;
     }
@@ -516,6 +555,7 @@ class Me implements Object {
         return this.h;
     }
 
+    // Constructor
     constructor(scene: GameScene) {
         this.alive = true;
 
@@ -534,6 +574,8 @@ class Me implements Object {
         this.slowFlag = false;
     }
 
+    // Methods
+    // Move player's aircraft
     public Move(scene: GameScene) {
         if (this.upFlag && this.y - this.h / 2 >= 0) {
             if (this.slowFlag) this.y -= this.slowSpeed;
@@ -544,6 +586,7 @@ class Me implements Object {
         }
     }
 
+    // Render player's aircraft
     public Render(scene: GameScene): void {
         scene.Context.drawImage(
             scene.Img_Me,
@@ -554,6 +597,7 @@ class Me implements Object {
         );
     }
 
+    // Get apolygon of enemy aircraft
     private GetPolygon(): Polygon {
         // Make the hitbox size smaller than the image size
         const vertices = [
@@ -566,6 +610,7 @@ class Me implements Object {
         return new Polygon(vertices);
     }
 
+    // Collision detection
     public IsHit(enemy: Enemy): boolean {
         if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
             console.log(enemy.GetPolygon().vertices);
@@ -575,7 +620,9 @@ class Me implements Object {
     }
 }
 
+// Class of shots of player's aircraft
 class Shot implements Object {
+    // Fields
     public live: boolean;
 
     private w: number;
@@ -584,6 +631,7 @@ class Shot implements Object {
     public x: number;
     public y: number;
 
+    // Constructor
     constructor(scene: GameScene) {
         this.live = true;
         this.w = 10;
@@ -593,6 +641,8 @@ class Shot implements Object {
         this.y = scene.Height / 2;
     }
 
+    // Methods
+    // Move bullets
     public Move(scene: GameScene): void {
         this.x += 10;
 
@@ -600,12 +650,18 @@ class Shot implements Object {
             this.live = false;
         }
     }
+
+    // Render bullets
     public Render(scene: GameScene): void {
         if (!this.live) return;
 
+        // Get context
         const ctx = scene.Context;
 
+        // Begin a new path
         ctx.beginPath();
+
+        // Set gradation
         const grd = ctx.createRadialGradient(
             this.x,
             this.y,
@@ -617,14 +673,18 @@ class Shot implements Object {
         grd.addColorStop(0, "white");
         grd.addColorStop(1, "orange");
         ctx.fillStyle = grd;
-        ctx.arc(this.x, this.y, this.w / 2, 0, Math.PI * 2, true);
 
+        // Draw the bullet
+        ctx.arc(this.x, this.y, this.w / 2, 0, Math.PI * 2, true);
         ctx.fill();
     }
 }
 
 window.onload = () => {
+    // Get canvas element
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+    // Create a game class instance
     const scene = new GameScene(canvas);
+    // Render screen
     scene.Render();
 };

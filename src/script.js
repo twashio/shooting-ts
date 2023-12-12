@@ -1,4 +1,7 @@
+// Class of game scene
+// This class controls all instances of objects
 var GameScene = /** @class */ (function () {
+    // Constrctor
     function GameScene(canvas) {
         this.frameCount = 0;
         this.score = 0;
@@ -22,6 +25,7 @@ var GameScene = /** @class */ (function () {
         window.addEventListener("keyup", this.keyUp.bind(this));
     }
     Object.defineProperty(GameScene.prototype, "Context", {
+        // Properties
         get: function () {
             return this.ctx;
         },
@@ -70,6 +74,8 @@ var GameScene = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
+    // Methods
+    // Callback function binded to keydown
     GameScene.prototype.keyDown = function (e) {
         var key = e.key;
         switch (key) {
@@ -108,6 +114,7 @@ var GameScene = /** @class */ (function () {
                 break;
         }
     };
+    // Callback function binded to keyup
     GameScene.prototype.keyUp = function (e) {
         var key = e.key;
         switch (key) {
@@ -125,20 +132,22 @@ var GameScene = /** @class */ (function () {
                 break;
         }
     };
+    // Render game scene
     GameScene.prototype.Render = function () {
+        // Increment frame counter
         this.frameCount++;
         if (this.me.alive) {
             // Move enemies
             for (var i = 0; i < this.enemies.length; i++) {
                 this.enemies[i].Move(this);
             }
-            // Move player's fighter
+            // Move player's aircraft
             this.me.Move(this);
             // Move player's shots
             for (var i = 0; i < this.shots.length; i++) {
                 this.shots[i].Move(this);
             }
-            // Enemy's collision detection
+            // Enemy collision detection
             for (var i = 0; i < this.shots.length; i++) {
                 for (var j = 0; j < this.enemies.length; j++) {
                     var isHit = this.enemies[j].IsHit(this.shots[i]);
@@ -147,6 +156,7 @@ var GameScene = /** @class */ (function () {
                     }
                 }
             }
+            // If the bullet is off the screen, set a new bullet
             for (var i = 0; i < this.enemies.length; i++) {
                 for (var k = 0; k < this.shots.length; k++) {
                     if (this.shots[k].live) {
@@ -158,7 +168,7 @@ var GameScene = /** @class */ (function () {
                     }
                 }
             }
-            // Player's collision detection
+            // Player collision detection
             for (var i = 0; i < this.enemies.length; i++) {
                 var isHit = this.me.IsHit(this.enemies[i]);
                 if (isHit) {
@@ -220,15 +230,19 @@ var GameScene = /** @class */ (function () {
             this.ctx.strokeStyle = "rgb(0, 0, 0)";
             this.ctx.strokeText(txtScore, this.width / 2 - tmScore.width / 2, this.heigtht / 2 + 50);
         }
+        // Request frame
         window.requestAnimationFrame(this.Render.bind(this));
     };
     return GameScene;
 }());
+// Class of 2D Vector
 var Vector2 = /** @class */ (function () {
+    // Constructor
     function Vector2(x, y) {
         this.x = x;
         this.y = y;
     }
+    // Methods
     // Inner product
     Vector2.Dot = function (a, b) {
         return a.x * b.x + a.y * b.y;
@@ -243,10 +257,14 @@ var Vector2 = /** @class */ (function () {
     };
     return Vector2;
 }());
+// Class of Polygon
+// It is used to collision detection
 var Polygon = /** @class */ (function () {
+    // Constructor
     function Polygon(vertices) {
         this.vertices = vertices;
     }
+    // Methods
     // Create a list of normal vectors for each edge
     Polygon.getAxes = function (a, b) {
         var axes = new Array();
@@ -277,6 +295,7 @@ var Polygon = /** @class */ (function () {
         }
         return [min, max];
     };
+    // Returns whether two polygons collide
     Polygon.Collide = function (a, b) {
         // List of axes
         var axes = this.getAxes(a, b);
@@ -294,7 +313,9 @@ var Polygon = /** @class */ (function () {
     };
     return Polygon;
 }());
+// Class of enemy aircraft
 var Enemy = /** @class */ (function () {
+    // Constructor
     function Enemy(scene) {
         this.alive = true;
         this.speed = 0;
@@ -307,6 +328,8 @@ var Enemy = /** @class */ (function () {
         this.angle = 0;
         this.SetStartPosition(scene);
     }
+    // Methods
+    // Set start position of enemy aricraft
     Enemy.prototype.SetStartPosition = function (scene) {
         this.x = this.w / 2 + scene.Width + (Math.random() * scene.Width) / 2;
         this.y = this.h / 2 + Math.random() * (scene.Height - this.h);
@@ -321,6 +344,7 @@ var Enemy = /** @class */ (function () {
             this.hSpeed = 0;
         }
     };
+    // Move enemy aircraft
     Enemy.prototype.Move = function (scene) {
         this.x -= this.speed;
         this.y -= this.hSpeed;
@@ -328,6 +352,7 @@ var Enemy = /** @class */ (function () {
             this.SetStartPosition(scene);
         }
     };
+    // Render enemy aircraft
     Enemy.prototype.Render = function (scene) {
         // Rotate and draw
         scene.Context.save();
@@ -336,6 +361,7 @@ var Enemy = /** @class */ (function () {
         scene.Context.drawImage(scene.Img_Enemy, -this.w / 2, -this.h / 2, this.w, this.h);
         scene.Context.restore();
     };
+    // Get apolygon of enemy aircraft
     Enemy.prototype.GetPolygon = function () {
         var _this = this;
         // Make the hitbox size smaller than the image size
@@ -347,7 +373,7 @@ var Enemy = /** @class */ (function () {
         ];
         var vertices_roteted = [];
         vertices.forEach(function (vector) {
-            // Convert coordinates to center on origin
+            // Convert coordinates to center on (0, 0)
             var x0 = vector.x - _this.x;
             var y0 = vector.y - _this.y;
             // Rotate
@@ -360,11 +386,15 @@ var Enemy = /** @class */ (function () {
         });
         return new Polygon(vertices_roteted);
     };
+    // Collision detection
     Enemy.prototype.IsHit = function (shot) {
+        // If the shot is not alive, return false
         if (!shot.live) {
             return false;
         }
+        // Get a vector of bullet
         var vertices = [new Vector2(shot.x, shot.y)];
+        // Collision detection
         if (Polygon.Collide(this.GetPolygon(), new Polygon(vertices))) {
             return true;
         }
@@ -372,7 +402,9 @@ var Enemy = /** @class */ (function () {
     };
     return Enemy;
 }());
+// Class of player's aircraft
 var Me = /** @class */ (function () {
+    // Constructor
     function Me(scene) {
         this.alive = true;
         this.aspect = 1.331;
@@ -387,6 +419,7 @@ var Me = /** @class */ (function () {
         this.slowFlag = false;
     }
     Object.defineProperty(Me.prototype, "Width", {
+        // Properties
         get: function () {
             return this.w;
         },
@@ -400,6 +433,8 @@ var Me = /** @class */ (function () {
         enumerable: false,
         configurable: true
     });
+    // Methods
+    // Move player's aircraft
     Me.prototype.Move = function (scene) {
         if (this.upFlag && this.y - this.h / 2 >= 0) {
             if (this.slowFlag)
@@ -414,9 +449,11 @@ var Me = /** @class */ (function () {
                 this.y += this.speed;
         }
     };
+    // Render player's aircraft
     Me.prototype.Render = function (scene) {
         scene.Context.drawImage(scene.Img_Me, this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
     };
+    // Get apolygon of enemy aircraft
     Me.prototype.GetPolygon = function () {
         // Make the hitbox size smaller than the image size
         var vertices = [
@@ -427,6 +464,7 @@ var Me = /** @class */ (function () {
         ];
         return new Polygon(vertices);
     };
+    // Collision detection
     Me.prototype.IsHit = function (enemy) {
         if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
             console.log(enemy.GetPolygon().vertices);
@@ -436,7 +474,9 @@ var Me = /** @class */ (function () {
     };
     return Me;
 }());
+// Class of shots of player's aircraft
 var Shot = /** @class */ (function () {
+    // Constructor
     function Shot(scene) {
         this.live = true;
         this.w = 10;
@@ -444,28 +484,38 @@ var Shot = /** @class */ (function () {
         this.x = 100;
         this.y = scene.Height / 2;
     }
+    // Methods
+    // Move bullets
     Shot.prototype.Move = function (scene) {
         this.x += 10;
         if (this.x > scene.Width + this.w) {
             this.live = false;
         }
     };
+    // Render bullets
     Shot.prototype.Render = function (scene) {
         if (!this.live)
             return;
+        // Get context
         var ctx = scene.Context;
+        // Begin a new path
         ctx.beginPath();
+        // Set gradation
         var grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.w / 2);
         grd.addColorStop(0, "white");
         grd.addColorStop(1, "orange");
         ctx.fillStyle = grd;
+        // Draw the bullet
         ctx.arc(this.x, this.y, this.w / 2, 0, Math.PI * 2, true);
         ctx.fill();
     };
     return Shot;
 }());
 window.onload = function () {
+    // Get canvas element
     var canvas = document.getElementById("canvas");
+    // Create a game class instance
     var scene = new GameScene(canvas);
+    // Render screen
     scene.Render();
 };
