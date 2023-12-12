@@ -32,6 +32,8 @@ class GameScene implements Scene {
 
     private shots: Array<Shot>;
 
+    private particles: Array<Particle>;
+
     // Properties
     public get Context(): CanvasRenderingContext2D {
         return this.ctx;
@@ -88,6 +90,8 @@ class GameScene implements Scene {
         }
 
         this.shots = new Array();
+
+        this.particles = new Array();
 
         window.addEventListener("keydown", this.keyDown.bind(this));
         window.addEventListener("keyup", this.keyUp.bind(this));
@@ -187,6 +191,7 @@ class GameScene implements Scene {
         // Increment frame counter
         this.frameCount++;
 
+        // Move objects only if the player is alive
         if (this.me.alive) {
             // Move enemies
             for (let i = 0; i < this.enemies.length; i++) {
@@ -205,8 +210,20 @@ class GameScene implements Scene {
             for (let i = 0; i < this.shots.length; i++) {
                 for (let j = 0; j < this.enemies.length; j++) {
                     let isHit = this.enemies[j].IsHit(this.shots[i]);
+
                     if (isHit) {
+                        // Remove the collided enemy
                         this.enemies[j].alive = false;
+
+                        // Set particles
+                        for (let k = 0; k < 50; k++) {
+                            this.particles.push(
+                                new Particle(
+                                    this.enemies[j].x,
+                                    this.enemies[j].y
+                                )
+                            );
+                        }
                     }
                 }
             }
@@ -230,6 +247,15 @@ class GameScene implements Scene {
                 const isHit = this.me.IsHit(this.enemies[i]);
                 if (isHit) {
                     this.me.alive = false;
+
+                    // Set particles
+                    for (let j = 0; j < 50; j++) {
+                        this.particles.push(new Particle(this.me.x, this.me.y));
+                    }
+
+                    // Remove the enemy player collides with
+                    this.enemies.splice(i, 1);
+
                     break;
                 }
             }
@@ -254,7 +280,18 @@ class GameScene implements Scene {
         }
 
         // Render player
-        this.me.Render(this);
+        if (this.me.alive) {
+            this.me.Render(this);
+        }
+
+        // Render particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.Render(this);
+            if (p.age >= p.maxAge) {
+                this.particles.splice(i, 1);
+            }
+        }
 
         // Render player's shots
         for (let i = 0; i < this.shots.length; i++) {
@@ -264,7 +301,8 @@ class GameScene implements Scene {
         // Render letters
         if (this.me.alive) {
             this.ctx.font = "bold 15px Verdana";
-            const txtDesc = "↑:Up  ↓:Down  →:Forward ←:Back Z:Shoot  Shift:Reduce speed";
+            const txtDesc =
+                "↑:Up  ↓:Down  →:Forward ←:Back Z:Shoot  Shift:Reduce speed";
 
             this.ctx.strokeStyle = "rgb(0, 0, 0)";
             this.ctx.strokeText(txtDesc, 5, 25);
@@ -720,6 +758,43 @@ class Shot implements Object {
         // Draw the bullet
         ctx.arc(this.x, this.y, this.w / 2, 0, Math.PI * 2, true);
         ctx.fill();
+    }
+}
+
+// Class of particle of explosion
+class Particle implements Object {
+    // Fields
+    public x: number;
+    public y: number;
+    private vx: number;
+    private vy: number;
+    public age: number;
+    public maxAge: number;
+
+    // Constructor
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.age = 0;
+        this.maxAge = 100;
+    }
+
+    // Methods
+    public Render(scene: GameScene) {
+        this.vx *= 0.99;
+        this.vy *= 0.99;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
+
+        // Draw
+        scene.Context.beginPath();
+        scene.Context.arc(this.x, this.y, 3, 0, 2 * Math.PI);
+        scene.Context.fillStyle =
+            "rgba(255, 150, 0, " + (1 - this.age / this.maxAge) + ")";
+        scene.Context.fill();
     }
 }
 
