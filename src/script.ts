@@ -1,5 +1,6 @@
 // Interface of scenes
 interface Scene {
+    // Render entire scene
     Render(): void;
 }
 
@@ -7,7 +8,9 @@ interface Scene {
 interface Object {
     x: number;
     y: number;
+    // Move each object
     Move(scene: GameScene): void;
+    // Render each object
     Render(scene: GameScene): void;
 }
 
@@ -24,14 +27,18 @@ class GameScene implements Scene {
     private width: number;
     private heigtht: number;
 
+    // Player
     private img_me: CanvasImageSource;
     private me: Me;
 
+    // Enemy
     private img_enemy: CanvasImageSource;
     private enemies: Array<Enemy>;
 
+    // Player's shot
     private shots: Array<Shot>;
 
+    // Paricles of explosion
     private particles: Array<Particle>;
 
     // Properties
