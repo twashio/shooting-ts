@@ -76,11 +76,11 @@ class GameScene implements Scene {
         this.heigtht = this.canvas.height;
 
         this.img_me = new Image();
-        this.img_me.src = "img/war_sentouki_noman.png";
+        this.img_me.src = "img/fighter.png";
         this.me = new Me(this);
 
         this.img_enemy = new Image();
-        this.img_enemy.src = "img/war_zerosen.png";
+        this.img_enemy.src = "img/missile.png";
         this.enemies = new Array();
 
         for (let i = 0; i < 5; i++) {
@@ -419,7 +419,7 @@ class Enemy implements Object {
         this.speed = 0;
         this.hSpeed = 0;
 
-        this.aspect = 1.456;
+        this.aspect = 3.036;
         this.w = 100;
         this.h = this.w / this.aspect;
 
@@ -480,12 +480,11 @@ class Enemy implements Object {
 
     // Get apolygon of enemy aircraft
     public GetPolygon(): Polygon {
-        // Make the hitbox size smaller than the image size
         const vertices = [
-            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
-            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
-            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
-            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.5, this.y - this.h * 0.5),
+            new Vector2(this.x + this.w * 0.5, this.y - this.h * 0.5),
+            new Vector2(this.x + this.w * 0.5, this.y + this.h * 0.5),
+            new Vector2(this.x - this.w * 0.5, this.y + this.h * 0.5),
         ];
 
         let vertices_roteted = [];
@@ -559,7 +558,7 @@ class Me implements Object {
     constructor(scene: GameScene) {
         this.alive = true;
 
-        this.aspect = 1.331;
+        this.aspect = 2.048;
         this.w = 100;
         this.h = this.w / this.aspect;
 
@@ -597,7 +596,7 @@ class Me implements Object {
         );
     }
 
-    // Get apolygon of enemy aircraft
+    // Get apolygon of player's aircraft
     private GetPolygon(): Polygon {
         // Make the hitbox size smaller than the image size
         const vertices = [

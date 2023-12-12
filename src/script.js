@@ -12,10 +12,10 @@ var GameScene = /** @class */ (function () {
         this.width = this.canvas.width;
         this.heigtht = this.canvas.height;
         this.img_me = new Image();
-        this.img_me.src = "img/war_sentouki_noman.png";
+        this.img_me.src = "img/fighter.png";
         this.me = new Me(this);
         this.img_enemy = new Image();
-        this.img_enemy.src = "img/war_zerosen.png";
+        this.img_enemy.src = "img/missile.png";
         this.enemies = new Array();
         for (var i = 0; i < 5; i++) {
             this.enemies.push(new Enemy(this));
@@ -320,7 +320,7 @@ var Enemy = /** @class */ (function () {
         this.alive = true;
         this.speed = 0;
         this.hSpeed = 0;
-        this.aspect = 1.456;
+        this.aspect = 3.036;
         this.w = 100;
         this.h = this.w / this.aspect;
         this.x = scene.Width - this.w / 2;
@@ -364,12 +364,11 @@ var Enemy = /** @class */ (function () {
     // Get apolygon of enemy aircraft
     Enemy.prototype.GetPolygon = function () {
         var _this = this;
-        // Make the hitbox size smaller than the image size
         var vertices = [
-            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
-            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
-            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
-            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.5, this.y - this.h * 0.5),
+            new Vector2(this.x + this.w * 0.5, this.y - this.h * 0.5),
+            new Vector2(this.x + this.w * 0.5, this.y + this.h * 0.5),
+            new Vector2(this.x - this.w * 0.5, this.y + this.h * 0.5),
         ];
         var vertices_roteted = [];
         vertices.forEach(function (vector) {
@@ -407,7 +406,7 @@ var Me = /** @class */ (function () {
     // Constructor
     function Me(scene) {
         this.alive = true;
-        this.aspect = 1.331;
+        this.aspect = 2.048;
         this.w = 100;
         this.h = this.w / this.aspect;
         this.x = this.w / 2;
@@ -453,7 +452,7 @@ var Me = /** @class */ (function () {
     Me.prototype.Render = function (scene) {
         scene.Context.drawImage(scene.Img_Me, this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
     };
-    // Get apolygon of enemy aircraft
+    // Get apolygon of player's aircraft
     Me.prototype.GetPolygon = function () {
         // Make the hitbox size smaller than the image size
         var vertices = [
