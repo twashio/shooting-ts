@@ -466,7 +466,6 @@ var Me = /** @class */ (function () {
     // Collision detection
     Me.prototype.IsHit = function (enemy) {
         if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
-            console.log(enemy.GetPolygon().vertices);
             return true;
         }
         return false;

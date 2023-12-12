@@ -612,7 +612,6 @@ class Me implements Object {
     // Collision detection
     public IsHit(enemy: Enemy): boolean {
         if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
-            console.log(enemy.GetPolygon().vertices);
             return true;
         }
         return false;
