@@ -281,43 +281,95 @@ class GameScene implements Scene {
     }
 }
 
-class Rect {
-    private x: number;
-    private y: number;
-    private w: number;
-    private h: number;
+class Vector2 {
+    public x: number;
+    public y: number;
 
-    constructor(x: number, y: number, w: number, h: number) {
+    constructor(x: number, y: number) {
         this.x = x;
         this.y = y;
-        this.w = w;
-        this.h = h;
     }
 
-    public IsContain(px: number, py: number): boolean {
-        if (
-            this.x <= px &&
-            px <= this.x + this.w &&
-            this.y <= py &&
-            py <= this.y + this.h
-        ) {
-            return true;
+    // Inner product
+    public static Dot(a: Vector2, b: Vector2): number {
+        return a.x * b.x + a.y * b.y;
+    }
+
+    // Normal vector
+    public static Normal(a: Vector2): Vector2 {
+        return new Vector2(a.y, a.x * -1);
+    }
+
+    // Vector substraction
+    public static Minus(a: Vector2, b: Vector2): Vector2 {
+        return new Vector2(a.x - b.x, a.y - b.y);
+    }
+}
+
+class Polygon {
+    public vertices: Array<Vector2>;
+
+    constructor(vertices: Array<Vector2>) {
+        this.vertices = vertices;
+    }
+
+    // Create a list of normal vectors for each edge
+    private static getAxes(a: Polygon, b: Polygon): Array<Vector2> {
+        let axes = new Array<Vector2>();
+
+        for (let i = 0; i < a.vertices.length; i++) {
+            let p1 = a.vertices[i];
+            let p2 =
+                i == a.vertices.length - 1 ? a.vertices[0] : a.vertices[i + 1];
+            axes.push(Vector2.Normal(Vector2.Minus(p2, p1)));
         }
-        return false;
+
+        for (let i = 0; i < b.vertices.length; i++) {
+            let p1 = b.vertices[i];
+            let p2 =
+                i == b.vertices.length - 1 ? b.vertices[0] : b.vertices[i + 1];
+            axes.push(Vector2.Normal(Vector2.Minus(p2, p1)));
+        }
+        return axes;
     }
 
-    public IsIntersect(r: Rect): boolean {
-        let mx1 = this.x;
-        let my1 = this.y;
-        let mx2 = this.x + this.w;
-        let my2 = this.y + this.h;
+    // Calculate the projection of a polygon to a straight line
+    private Projection(axis: Vector2): Array<number> {
+        let min = Vector2.Dot(axis, this.vertices[0]);
+        let max = min;
 
-        let ex1 = r.x;
-        let ey1 = r.y;
-        let ex2 = r.x + r.w;
-        let ey2 = r.y + r.h;
+        for (let i = 0; i < this.vertices.length; i++) {
+            let p = Vector2.Dot(axis, this.vertices[i]);
+            if (p < min) {
+                min = p;
+            } else if (p > max) {
+                max = p;
+            }
+        }
+        return [min, max];
+    }
 
-        return mx1 <= ex2 && ex1 <= mx2 && my1 <= ey2 && ey1 <= my2;
+    public static Collide(a: Polygon, b: Polygon): boolean {
+        // List of axes
+        let axes = this.getAxes(a, b);
+
+        for (let i = 0; i < axes.length; i++) {
+            let ap = a.Projection(axes[i]);
+            let bp = b.Projection(axes[i]);
+
+            if (
+                !(
+                    // If the projections do not overlap, it is not a hit.
+                    (
+                        (ap[0] <= bp[0] && bp[0] <= ap[1]) ||
+                        (bp[0] <= ap[0] && ap[0] <= bp[1])
+                    )
+                )
+            ) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
@@ -333,6 +385,8 @@ class Enemy implements Object {
     public x: number;
     public y: number;
 
+    public angle: number;
+
     constructor(scene: GameScene) {
         this.alive = true;
         this.speed = 0;
@@ -345,6 +399,8 @@ class Enemy implements Object {
         this.x = scene.Width - this.w / 2;
         this.y = scene.Height / 2;
 
+        this.angle = 0;
+
         this.SetStartPosition(scene);
     }
 
@@ -356,6 +412,8 @@ class Enemy implements Object {
         if (0.5 > Math.random()) {
             let dx = this.x - scene.Me.x + 300;
             let dy = this.y - scene.Me.y;
+
+            this.angle = Math.atan2(dy, dx);
 
             this.hSpeed = this.speed * (dy / dx);
         } else {
@@ -373,22 +431,50 @@ class Enemy implements Object {
     }
 
     public Render(scene: GameScene): void {
+        // Rotate and draw
+        scene.Context.save();
+        scene.Context.translate(this.x, this.y);
+        scene.Context.rotate(this.angle);
+
         scene.Context.drawImage(
             scene.Img_Enemy,
-            this.x - this.w / 2,
-            this.y - this.h / 2,
+            -this.w / 2,
+            -this.h / 2,
             this.w,
             this.h
         );
+
+        scene.Context.restore();
     }
 
-    public GetHitRect(): Rect {
-        return new Rect(
-            this.x - this.w * 0.3,
-            this.y - this.h * 0.3,
-            this.w * 0.6,
-            this.h * 0.6
-        );
+    public GetPolygon(): Polygon {
+        // Make the hitbox size smaller than the image size
+        const vertices = [
+            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+        ];
+
+        let vertices_roteted = [];
+
+        vertices.forEach((vector) => {
+            // Convert coordinates to center on origin
+            let x0 = vector.x - this.x;
+            let y0 = vector.y - this.y;
+
+            // Rotate
+            let x1 = x0 * Math.cos(this.angle) - y0 * Math.sin(this.angle);
+            let y1 = x0 * Math.sin(this.angle) + y0 * Math.cos(this.angle);
+        
+            // Restore potision
+            let x2 = x1 + this.x;
+            let y2 = y1 + this.y;
+
+            vertices_roteted.push(new Vector2(x2, y2));
+        });
+
+        return new Polygon(vertices_roteted);
     }
 
     public IsHit(shot: Shot): boolean {
@@ -396,9 +482,8 @@ class Enemy implements Object {
             return false;
         }
 
-        const hitRect = this.GetHitRect();
-
-        if (hitRect.IsContain(shot.x, shot.y)) {
+        let vertices = [new Vector2(shot.x, shot.y)];
+        if (Polygon.Collide(this.GetPolygon(), new Polygon(vertices))) {
             return true;
         }
 
@@ -469,22 +554,23 @@ class Me implements Object {
         );
     }
 
-    public GetHitRect(): Rect {
-        return new Rect(
-            this.x - this.w * 0.3,
-            this.y - this.h * 0.3,
-            this.w * 0.6,
-            this.h * 0.6
-        );
+    private GetPolygon(): Polygon {
+        // Make the hitbox size smaller than the image size
+        const vertices = [
+            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+        ];
+
+        return new Polygon(vertices);
     }
 
     public IsHit(enemy: Enemy): boolean {
-        const hitRect = enemy.GetHitRect();
-
-        if (hitRect.IsIntersect(this.GetHitRect())) {
+        if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
+            console.log(enemy.GetPolygon().vertices);
             return true;
         }
-
         return false;
     }
 }

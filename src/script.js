@@ -224,34 +224,75 @@ var GameScene = /** @class */ (function () {
     };
     return GameScene;
 }());
-var Rect = /** @class */ (function () {
-    function Rect(x, y, w, h) {
+var Vector2 = /** @class */ (function () {
+    function Vector2(x, y) {
         this.x = x;
         this.y = y;
-        this.w = w;
-        this.h = h;
     }
-    Rect.prototype.IsContain = function (px, py) {
-        if (this.x <= px &&
-            px <= this.x + this.w &&
-            this.y <= py &&
-            py <= this.y + this.h) {
-            return true;
+    // Inner product
+    Vector2.Dot = function (a, b) {
+        return a.x * b.x + a.y * b.y;
+    };
+    // Normal vector
+    Vector2.Normal = function (a) {
+        return new Vector2(a.y, a.x * -1);
+    };
+    // Vector substraction
+    Vector2.Minus = function (a, b) {
+        return new Vector2(a.x - b.x, a.y - b.y);
+    };
+    return Vector2;
+}());
+var Polygon = /** @class */ (function () {
+    function Polygon(vertices) {
+        this.vertices = vertices;
+    }
+    // Create a list of normal vectors for each edge
+    Polygon.getAxes = function (a, b) {
+        var axes = new Array();
+        for (var i = 0; i < a.vertices.length; i++) {
+            var p1 = a.vertices[i];
+            var p2 = i == a.vertices.length - 1 ? a.vertices[0] : a.vertices[i + 1];
+            axes.push(Vector2.Normal(Vector2.Minus(p2, p1)));
         }
-        return false;
+        for (var i = 0; i < b.vertices.length; i++) {
+            var p1 = b.vertices[i];
+            var p2 = i == b.vertices.length - 1 ? b.vertices[0] : b.vertices[i + 1];
+            axes.push(Vector2.Normal(Vector2.Minus(p2, p1)));
+        }
+        return axes;
     };
-    Rect.prototype.IsIntersect = function (r) {
-        var mx1 = this.x;
-        var my1 = this.y;
-        var mx2 = this.x + this.w;
-        var my2 = this.y + this.h;
-        var ex1 = r.x;
-        var ey1 = r.y;
-        var ex2 = r.x + r.w;
-        var ey2 = r.y + r.h;
-        return mx1 <= ex2 && ex1 <= mx2 && my1 <= ey2 && ey1 <= my2;
+    // Calculate the projection of a polygon to a straight line
+    Polygon.prototype.Projection = function (axis) {
+        var min = Vector2.Dot(axis, this.vertices[0]);
+        var max = min;
+        for (var i = 0; i < this.vertices.length; i++) {
+            var p = Vector2.Dot(axis, this.vertices[i]);
+            if (p < min) {
+                min = p;
+            }
+            else if (p > max) {
+                max = p;
+            }
+        }
+        return [min, max];
     };
-    return Rect;
+    Polygon.Collide = function (a, b) {
+        // List of axes
+        var axes = this.getAxes(a, b);
+        for (var i = 0; i < axes.length; i++) {
+            var ap = a.Projection(axes[i]);
+            var bp = b.Projection(axes[i]);
+            if (!(
+            // If the projections do not overlap, it is not a hit.
+            ((ap[0] <= bp[0] && bp[0] <= ap[1]) ||
+                (bp[0] <= ap[0] && ap[0] <= bp[1])))) {
+                return false;
+            }
+        }
+        return true;
+    };
+    return Polygon;
 }());
 var Enemy = /** @class */ (function () {
     function Enemy(scene) {
@@ -263,6 +304,7 @@ var Enemy = /** @class */ (function () {
         this.h = this.w / this.aspect;
         this.x = scene.Width - this.w / 2;
         this.y = scene.Height / 2;
+        this.angle = 0;
         this.SetStartPosition(scene);
     }
     Enemy.prototype.SetStartPosition = function (scene) {
@@ -272,6 +314,7 @@ var Enemy = /** @class */ (function () {
         if (0.5 > Math.random()) {
             var dx = this.x - scene.Me.x + 300;
             var dy = this.y - scene.Me.y;
+            this.angle = Math.atan2(dy, dx);
             this.hSpeed = this.speed * (dy / dx);
         }
         else {
@@ -286,17 +329,43 @@ var Enemy = /** @class */ (function () {
         }
     };
     Enemy.prototype.Render = function (scene) {
-        scene.Context.drawImage(scene.Img_Enemy, this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
+        // Rotate and draw
+        scene.Context.save();
+        scene.Context.translate(this.x, this.y);
+        scene.Context.rotate(this.angle);
+        scene.Context.drawImage(scene.Img_Enemy, -this.w / 2, -this.h / 2, this.w, this.h);
+        scene.Context.restore();
     };
-    Enemy.prototype.GetHitRect = function () {
-        return new Rect(this.x - this.w * 0.3, this.y - this.h * 0.3, this.w * 0.6, this.h * 0.6);
+    Enemy.prototype.GetPolygon = function () {
+        var _this = this;
+        // Make the hitbox size smaller than the image size
+        var vertices = [
+            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+        ];
+        var vertices_roteted = [];
+        vertices.forEach(function (vector) {
+            // Convert coordinates to center on origin
+            var x0 = vector.x - _this.x;
+            var y0 = vector.y - _this.y;
+            // Rotate
+            var x1 = x0 * Math.cos(_this.angle) - y0 * Math.sin(_this.angle);
+            var y1 = x0 * Math.sin(_this.angle) + y0 * Math.cos(_this.angle);
+            // Restore potision
+            var x2 = x1 + _this.x;
+            var y2 = y1 + _this.y;
+            vertices_roteted.push(new Vector2(x2, y2));
+        });
+        return new Polygon(vertices_roteted);
     };
     Enemy.prototype.IsHit = function (shot) {
         if (!shot.live) {
             return false;
         }
-        var hitRect = this.GetHitRect();
-        if (hitRect.IsContain(shot.x, shot.y)) {
+        var vertices = [new Vector2(shot.x, shot.y)];
+        if (Polygon.Collide(this.GetPolygon(), new Polygon(vertices))) {
             return true;
         }
         return false;
@@ -348,12 +417,19 @@ var Me = /** @class */ (function () {
     Me.prototype.Render = function (scene) {
         scene.Context.drawImage(scene.Img_Me, this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
     };
-    Me.prototype.GetHitRect = function () {
-        return new Rect(this.x - this.w * 0.3, this.y - this.h * 0.3, this.w * 0.6, this.h * 0.6);
+    Me.prototype.GetPolygon = function () {
+        // Make the hitbox size smaller than the image size
+        var vertices = [
+            new Vector2(this.x - this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y - this.h * 0.3),
+            new Vector2(this.x + this.w * 0.3, this.y + this.h * 0.3),
+            new Vector2(this.x - this.w * 0.3, this.y + this.h * 0.3),
+        ];
+        return new Polygon(vertices);
     };
     Me.prototype.IsHit = function (enemy) {
-        var hitRect = enemy.GetHitRect();
-        if (hitRect.IsIntersect(this.GetHitRect())) {
+        if (Polygon.Collide(this.GetPolygon(), enemy.GetPolygon())) {
+            console.log(enemy.GetPolygon().vertices);
             return true;
         }
         return false;
