@@ -78,7 +78,7 @@ class GameScene implements Scene {
         this.canvas = canvas;
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
-        this.canvas.width = 1000;
+        this.canvas.width = 800;
         this.canvas.height = 600;
 
         this.width = this.canvas.width;
